@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:mongo="http://www.mulesoft.org/schema/mule/mongo" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/mongo http://www.mulesoft.org/schema/mule/mongo/current/mule-mongo.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="48931c9f-5a61-42df-86dc-e605124eae75" >
+		<file:connection workingDir="C:\Users\minni\AnypointStudio\examples_20-01\demo-mongodb\src\main\resources" />
+	</file:config>
+	<mongo:config name="MongoDB_Config" doc:name="MongoDB Config" doc:id="068e71e3-07f9-47dd-a59f-1aa5f5cac91a" >
+		<mongo:connection database="all" />
+	</mongo:config>
+	<flow name="demo-mongodbFlow" doc:id="f93bb740-4595-42fd-ada3-d9790948f98e" >
+		<scheduler doc:name="Scheduler" doc:id="c1b30902-5eea-4e64-97ce-656523c2213a" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="30" timeUnit="SECONDS"/>
+			</scheduling-strategy>
+		</scheduler>
+		<file:read doc:name="Read" doc:id="8b01a597-1d40-4996-a9d2-fccc63c19b74" config-ref="File_Config" path="input.csv"/>
+		<ee:transform doc:name="Transform Message" doc:id="fef0ef14-7599-4060-a2ba-48edd29c9e78" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map
+{
+ 	firstname:$.firstname,
+ 	surname:$.surname,
+ 	phone:$.phone,
+ 	email:$.email
+ 	
+ 	
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="30b2d543-71b6-4659-be7a-c24f1cb9be44" message="#[payload]"/>
+		<mongo:exists-collection doc:name="Exists collection" doc:id="77d19096-9bf9-4b75-b39b-c238c4210742" config-ref="MongoDB_Config" target="collectionexists">
+			<mongo:collection-name><![CDATA[customers]]></mongo:collection-name>
+		</mongo:exists-collection>
+		<choice doc:name="Choice" doc:id="f987b9bc-725e-496b-9191-9e2459b18739" >
+			<when expression="#[not vars.collectionexists]">
+				<mongo:create-collection doc:name="Create collection" doc:id="25d3541d-b1ed-4c31-bc11-caccd2ec3104" config-ref="MongoDB_Config" collectionName="customers" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="b15dba09-16ea-44f4-9677-dc001fc0e613" />
+			</otherwise>
+		</choice>
+		<foreach doc:name="For Each" doc:id="9a47c82a-8696-4a8a-8bce-df76f1030ab8" >
+			<logger level="INFO" doc:name="Logger" doc:id="82aa8b42-7078-4c2c-a160-a2ab83352a63" message="#[payload]"/>
+			<mongo:insert-document doc:name="Insert document" doc:id="b4ec26ea-1aad-4482-ac47-dfb89fa09c36" config-ref="MongoDB_Config" collectionName="customers"/>
+			<logger level="INFO" doc:name="Logger" doc:id="5f90bec8-c478-4417-bc05-045080bdfa48" />
+		</foreach>
+	</flow>
+</mule>
